@@ -25,6 +25,8 @@ export class World {
     this.burstCharge = 0;
     this.kills = 0;
     this.shotsFired = 0;
+    this.shotsHit = 0;
+    this.newBest = false;
     this.shake = 0;
     this.burstRing = null;
     this.events = [];
@@ -53,6 +55,8 @@ export class World {
     this.comboTimer = 0;
     this.kills = 0;
     this.shotsFired = 0;
+    this.shotsHit = 0;
+    this.newBest = false;
     this.flowerHp = CFG.FLOWER_HP;
     this.burstCharge = 0;
     this.enemies = [];
@@ -150,6 +154,7 @@ export class World {
     if (this.flowerHp <= 0) {
       this.state = 'over';
       this.texts = [];
+      this.newBest = this.score > this.best;
       this.best = Math.max(this.best, this.score);
       this.events.push('over');
     }
@@ -217,6 +222,7 @@ export class World {
         if (this.wave >= CFG.WAVE_COUNT) {
           this.state = 'win';
           this.texts = [];
+          this.newBest = this.score > this.best;
           this.best = Math.max(this.best, this.score);
           this.events.push('win');
           return;
@@ -272,6 +278,7 @@ export class World {
           this.bullets.splice(this.bullets.indexOf(b), 1);
           e.hp--;
           e.hitFlash = 0.12;
+          this.shotsHit++;
           this.burstParticles(b.x, b.y, '#7ef9ff', 3);
           this.events.push('hit');
           if (e.hp <= 0) this.killEnemy(e);
