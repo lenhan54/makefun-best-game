@@ -142,14 +142,50 @@ export function runTicks(world, ticks, inputFn) {
 // the captured frame is stable. Returns true when a shot was staged.
 export function applyShot(world, { shot, seed }) {
   if (shot === 'start') {
+    // Stage a live garden behind the title: play wave 6 for real with
+    // the guard policy, then show the title over the busy world. (The
+    // field never holds a crowd through real play — enemies spawn one
+    // at a time and Pip kills about as fast — so wave 6 with a few
+    // beetles, bullets and seeds on screen is the liveliest honest
+    // backdrop the game produces.)
+    world.start();
+    let guard = 0;
+    while (
+      world.state === 'playing' &&
+      !(world.wave === 6 && world.waveState === 'fight') &&
+      guard < 60 * 60 * 8
+    ) {
+      world.update(1 / 60, guardInput(world));
+      guard++;
+    }
+    runTicks(world, 60 * 6, guardInput);
     world.state = 'title';
+    // Floating score popups from the staged fight would sit on the
+    // title text; clear them (same as the win/over screens already do).
+    world.texts = [];
     world.time = 3.2;
     world.frozen = true;
     return true;
   }
   if (shot === 'play') {
+    // Wave 10, mid-Bloom-Burst, with a crowd on screen: play for real
+    // with the guard policy until the final wave is in full fight, then
+    // fire the burst and freeze while the ring is small and bright.
     world.start();
-    runTicks(world, 60 * 11, autopilotInput);
+    let guard = 0;
+    while (
+      world.state === 'playing' &&
+      !(world.wave === 10 && world.waveState === 'fight' && world.enemies.length >= 10) &&
+      guard < 60 * 60 * 8
+    ) {
+      world.update(1 / 60, guardInput(world));
+      guard++;
+    }
+    world.burstCharge = CFG.BURST_COST;
+    world.useBurst();
+    // Freeze early: the ring is small and bright, and most enemies are
+    // still alive just outside it.
+    runTicks(world, 6, guardInput);
     world.frozen = true;
     return true;
   }
@@ -176,15 +212,21 @@ export function applyShot(world, { shot, seed }) {
   }
   if (shot === 'end') {
     world.start();
-    // Pip plays well for a while, so the final score means something,
-    // then stops shooting and never moves: the dark reaches the bloom.
-    runTicks(world, 60 * 25, autopilotInput);
+    // Play well for real into the late waves with the guard policy, so
+    // the final score means something, then stop shooting and never
+    // move: the dark reaches the bloom in wave 8 or later.
+    let guard = 0;
+    while (world.state === 'playing' && world.wave < 8 && guard < 60 * 60 * 8) {
+      world.update(1 / 60, guardInput(world));
+      guard++;
+    }
     const idle = () => ({ moveX: 0, moveY: 0, aimX: world.player.x, aimY: world.player.y - 100, firing: false, burstPressed: false });
-    runTicks(world, 60 * 60, idle);
+    runTicks(world, 60 * 180, idle);
     if (world.state === 'playing') {
-      // A long, slow wave can outlast the minute; finish it by hand.
+      // A long, slow wave can outlast the three minutes; finish it by hand.
       world.flowerHp = 0;
       world.state = 'over';
+      world.newBest = world.score > world.best;
       world.best = Math.max(world.best, world.score);
     }
     world.time += 2.0;
